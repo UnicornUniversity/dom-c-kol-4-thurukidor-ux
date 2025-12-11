@@ -5,7 +5,8 @@
  * @property {string} name - Jméno.
  * @property {string} surname - Příjmení.
  * @property {number} workload - Výše úvazku (10, 20, 30, 40).
- * @property {object} age - Věk (pouze interně, desetinná i celočíselná verze pro robustní statistiky).
+ * @property {number} ageDecimal - Věk jako reálné číslo (interně pro averageAge).
+ * @property {number} ageInteger - Věk jako celé číslo (interně pro minAge/maxAge/medianAge).
  */
 
 /**
@@ -15,18 +16,22 @@
  */
 function calculateMedian(arr) {
     if (arr.length === 0) return 0;
+    // Vytvoří kopii a setřídí pro numerické řazení
     const sortedArr = [...arr].sort((a, b) => a - b); 
     const mid = Math.floor(sortedArr.length / 2);
     
     if (sortedArr.length % 2 === 0) {
+        // Sudý počet: průměr dvou středových hodnot
         return (sortedArr[mid - 1] + sortedArr[mid]) / 2;
     } else {
+        // Lichý počet: prostřední hodnota
         return sortedArr[mid];
     }
 }
 
 /**
  * Generuje seznam zaměstnanců na základě vstupních kritérií.
+ * Tuto funkci jsme sice upravovali, ale je nutné ji zahrnout.
  * @param {object} dtoIn - Vstupní DTO s kritérii (count, age.min, age.max).
  * @returns {Employee[]} - Seznam vygenerovaných zaměstnanců.
  */
@@ -38,12 +43,13 @@ export function generateEmployeeData(dtoIn) {
     const FEMALE_SURNAMES = ["Nováková", "Svobodová", "Dvořáková", "Černá", "Procházková", "Ptáčková", "Jelínková", "Kučerová"];
 
     const WORKLOADS = [10, 20, 30, 40];
+    // Použijeme přesnější konstantu pro rok (365.25 dnů)
     const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
 
     const getRandomElement = (arr) => arr[Math.floor(Math.random() * arr.length)];
     const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
     
-    // Funkce pro přesný celočíselný věk pro min/max (ochrana proti chybám v testu)
+    // Výpočet celočíselného věku (Years past birthday)
     const calculateIntegerAge = (birthdate, now) => {
         let age = now.getFullYear() - birthdate.getFullYear();
         const m = now.getMonth() - birthdate.getMonth();
@@ -55,7 +61,7 @@ export function generateEmployeeData(dtoIn) {
 
     const currentDate = new Date();
     
-    // Výpočet hraničních dat pro generování datumu narození (pro dané min/max roky)
+    // Generování časových razítek v rozmezí [maxAge, minAge]
     const maxBirthdate = new Date();
     maxBirthdate.setFullYear(currentDate.getFullYear() - dtoIn.age.min);
     
@@ -83,11 +89,11 @@ export function generateEmployeeData(dtoIn) {
         const birthDateObj = new Date(randomTimestamp);
         const birthdate = birthDateObj.toISOString();
 
-        // Interně uložíme dvě verze věku pro robustní statistiky
-        const age = {
-            decimal: (currentDate.getTime() - randomTimestamp) / MS_PER_YEAR,
-            integer: calculateIntegerAge(birthDateObj, currentDate)
-        };
+        // 1. Věk jako reálné číslo (pro averageAge)
+        const ageDecimal = (currentDate.getTime() - randomTimestamp) / MS_PER_YEAR;
+        
+        // 2. Věk jako celé číslo (pro minAge, maxAge, medianAge)
+        const ageInteger = calculateIntegerAge(birthDateObj, currentDate);
 
         const workload = getRandomElement(WORKLOADS);
 
@@ -97,7 +103,8 @@ export function generateEmployeeData(dtoIn) {
             name,
             surname,
             workload,
-            age 
+            ageDecimal,
+            ageInteger // Interní data
         });
     }
 
@@ -106,69 +113,69 @@ export function generateEmployeeData(dtoIn) {
 
 
 /**
- * Počítá různé statistiky ze seznamu zaměstnanců.
- * @param {Employee[]} employees - Seznam zaměstnanců.
+ * Počítá statistiky dle nových požadavků na klíče a datové typy.
+ * @param {Employee[]} employees - Seznam zaměstnanců (výstup generateEmployeeData).
  * @returns {object} - Objekt se statistikami.
  */
 export function getEmployeeStatistics(employees) {
     if (employees.length === 0) {
         return {
-            employeeCount: 0,
-            employeeCountByWorkload: { workload10: 0, workload20: 0, workload30: 0, workload40: 0 },
+            totalCount: 0,
+            workloadsCount: { 10: 0, 20: 0, 30: 0, 40: 0 },
             averageAge: 0,
             minAge: 0,
             maxAge: 0,
             medianAge: 0,
             medianWorkload: 0,
-            averageWorkloadForWomen: 0,
+            averageFemaleWorkload: 0,
             sortedByWorkload: [],
         };
     }
 
-    const decimalAges = employees.map(e => e.age.decimal);
-    const integerAges = employees.map(e => e.age.integer);
+    const decimalAges = employees.map(e => e.ageDecimal);
+    const integerAges = employees.map(e => e.ageInteger);
     const workloads = employees.map(e => e.workload);
-    const women = employees.filter(e => e.gender === "female");
+    const females = employees.filter(e => e.gender === "female");
 
-    const employeeCount = employees.length;
+    const totalCount = employees.length;
 
-    // Počet zaměstnanců podle výše úvazku - klíče ve formátu 'workloadX'
-    const employeeCountByWorkload = workloads.reduce((acc, workload) => {
-        const key = `workload${workload}`;
-        acc[key] = (acc[key] || 0) + 1;
+    // 1. workloadsCount: Počet osob pro každou ze čtyř kategorií (Objekt)
+    const workloadsCount = workloads.reduce((acc, workload) => {
+        // Klíče jsou čísla: { 10: X, 20: Y, ... }
+        acc[workload] = (acc[workload] || 0) + 1;
         return acc;
-    }, { workload10: 0, workload20: 0, workload30: 0, workload40: 0 });
+    }, { 10: 0, 20: 0, 30: 0, 40: 0 });
 
-    // 3. Průměrný věk (používá přesnou desetinnou verzi)
-    const averageAge = parseFloat((decimalAges.reduce((sum, age) => sum + age, 0) / employeeCount).toFixed(1));
+    // 2. averageAge: Průměrný věk (reálné číslo, zaokrouhlené na jedno desetinné místo)
+    const averageAge = parseFloat((decimalAges.reduce((sum, age) => sum + age, 0) / totalCount).toFixed(1));
 
-    // 4./5. Min/Max věk (používá celočíselnou verzi pro robustnost testů)
+    // 3./4. minAge / maxAge (celé číslo)
     const minAge = Math.min(...integerAges); 
     const maxAge = Math.max(...integerAges); 
 
-    // 6. Medián věku (používá celočíselnou verzi pro robustnost testů)
+    // 5. medianAge (z celých čísel)
     const medianAge = calculateMedian(integerAges);
 
-    // 7. Medián výše úvazku
+    // 6. medianWorkload
     const medianWorkload = calculateMedian(workloads);
 
-    // 8. Průměrná výše úvazku v rámci žen
-    const averageWorkloadForWomen = women.length > 0 
-        ? parseFloat((women.reduce((sum, woman) => sum + woman.workload, 0) / women.length).toFixed(1))
+    // 7. averageFemaleWorkload
+    const averageFemaleWorkload = females.length > 0 
+        ? parseFloat((females.reduce((sum, female) => sum + female.workload, 0) / females.length).toFixed(1))
         : 0;
     
-    // 9. Seznam zaměstnanců setříděných dle výše úvazku od nejmenšího po největší
+    // 8. sortedByWorkload: Seznam setříděný numericky podle úvazku (od nejmenšího po největší)
     const sortedByWorkload = Array.from(employees).sort((a, b) => a.workload - b.workload);
 
     return {
-        employeeCount,
-        employeeCountByWorkload,
+        totalCount,
+        workloadsCount,
         averageAge,
         minAge,
         maxAge,
         medianAge,
         medianWorkload,
-        averageWorkloadForWomen,
+        averageFemaleWorkload,
         sortedByWorkload
     };
 }
@@ -176,42 +183,37 @@ export function getEmployeeStatistics(employees) {
 
 /**
  * Hlavní funkce, která generuje data a počítá statistiky.
- * Zajišťuje SPRÁVNOU strukturu výstupního DTO.
+ * Vrací výstupní DTO (dtoOut) se správnou strukturou.
  * @param {object} dtoIn - Vstupní DTO (count, age.min, age.max).
  * @returns {object} - Výstupní DTO se statistikami a setříděným seznamem.
  */
 export function main(dtoIn) {
+    // 1. Generování dat
     const employees = generateEmployeeData(dtoIn);
-    const statistics = getEmployeeStatistics(employees);
-    
-    const workloadCounts = statistics.employeeCountByWorkload; 
 
-    // Sestavení finálního DTO s maximální kompatibilitou s testem (včetně redundantních klíčů)
+    // 2. Výpočet statistik
+    const statistics = getEmployeeStatistics(employees);
+
+    // 3. Sestavení finálního DTO s přesnými názvy klíčů
     const dtoOut = {
-        // Zjevně vyžadováno testem
-        employeeCount: statistics.employeeCount, 
+        // totalCount: Celkový počet osob
+        totalCount: statistics.totalCount, 
         
-        // Klíč 'total' dle ukázky
-        total: statistics.employeeCount, 
+        // workloadsCount: Počet osob pro každou ze čtyř kategorií úvazku
+        // Dle požadavku na Úkol 4 se očekává, že klíče 10, 20, 30, 40 budou uvnitř tohoto objektu
+        workloadsCount: statistics.workloadsCount,
         
-        // Explicitně mapované počty úvazků
-        workload10: workloadCounts.workload10,
-        workload20: workloadCounts.workload20,
-        workload30: workloadCounts.workload30,
-        workload40: workloadCounts.workload40,
-        
+        // Ostatní statistiky
         averageAge: statistics.averageAge,
         minAge: statistics.minAge,
         maxAge: statistics.maxAge,
         medianAge: statistics.medianAge,
         medianWorkload: statistics.medianWorkload,
+        averageFemaleWorkload: statistics.averageFemaleWorkload, 
         
-        // Klíč 'averageWomenWorkload' dle ukázky
-        averageWomenWorkload: statistics.averageWorkloadForWomen, 
-        
-        // Odstranění interních klíčů z objektů v seznamu
+        // Seznam setříděný podle úvazku (odstraníme interní klíče ageDecimal/ageInteger)
         sortedByWorkload: statistics.sortedByWorkload.map(emp => {
-            const { age, ...rest } = emp; 
+            const { ageDecimal, ageInteger, ...rest } = emp; 
             return rest;
         })
     };
