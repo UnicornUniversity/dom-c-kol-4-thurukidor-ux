@@ -1,6 +1,4 @@
-/**
- * Generování dat a konstanty
- */
+// SEKVENACE: konstanty pro generovani dat
 const M_NAMES = ["Jan", "Petr", "Pavel", "Tomáš", "Vratislav", "Jiří", "Martin", "Jakub"];
 const F_NAMES = ["Anna", "Jana", "Marie", "Hana", "Lenka", "Jiřina", "Klára", "Veronika"];
 const M_SURNAMES = ["Novák", "Svoboda", "Dvořák", "Černý", "Procházka", "Sýkora", "Jelínek", "Kučera"];
@@ -8,55 +6,37 @@ const F_SURNAMES = ["Nováková", "Svobodová", "Dvořáková", "Černá", "Proc
 const W_LOADS = [10, 20, 30, 40];
 const MS_IN_YEAR = 365.25 * 24 * 60 * 60 * 1000;
 
-/**
- * Pomocná funkce pro výběr náhodného prvku z pole.
- * @param {Array} array 
- */
+// POMOCNY ALGORITMUS: vyber nahodneho prvku z pole
 const chooseRandom = (array) => array[Math.floor(Math.random() * array.length)];
 
-/**
- * Vrátí náhodné celé číslo v daném rozmezí [min, max].
- * @param {number} min 
- * @param {number} max 
- */
+// POMOCNY ALGORITMUS: vrati nahodne cele cislo v rozsahu [min, max]
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-/**
- * Zaokrouhlí číslo na zadaný počet desetinných míst.
- * @param {number} num Číslo k zaokrouhlení.
- * @param {number} decimals Počet desetinných míst.
- * @returns {number} Zaokrouhlený výsledek.
- */
+// POMOCNY ALGORITMUS: zaokrouhli cislo na dany pocet desetinnych mist
 const toPrecision = (num, decimals) => Math.round(num * 10 ** decimals) / 10 ** decimals;
 
-/**
- * Funkce pro výpočet mediánu, oddělená pro čistotu kódu.
- * @param {number[]} arr Pole čísel.
- * @returns {number} Medián hodnot.
- */
+// ALGORITMUS: vypocet medianu
 function calculateMedian(arr) {
+    // SELECTION: kontrola prazdneho pole
     if (arr.length === 0) return 0;
-    // Numerické seřazení
+    
+    // SEKVENACE: serazeni a urceni stredu
     const sorted = [...arr].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
     
+    // SELECTION: vypocet pro sudy nebo lichy pocet prvku
     if (sorted.length % 2 === 0) {
-        // Sudý počet: průměr dvou středových hodnot
         return (sorted[mid - 1] + sorted[mid]) / 2;
     }
-    // Lichý počet: prostřední hodnota
     return sorted[mid];
 }
 
-/**
- * Generuje seznam zaměstnanců a přidává dekadický věk.
- * @param {object} dtoIn Vstupní objekt (count, age.min, age.max).
- * @returns {object[]} Pole zaměstnanců.
- */
+// ALGORITMUS: generovani dat zamestnancu
 export function generateEmployeeData(dtoIn) {
+    // SEKVENACE: inicializace aktualniho data
     const currentDate = new Date();
     
-    // Generování časových razítek v rozsahu [minVek, maxVek]
+    // SEKVENACE: vypocet casovych razitek pro rozsah veku
     const maxBirthdate = new Date();
     maxBirthdate.setFullYear(currentDate.getFullYear() - dtoIn.age.min);
     
@@ -68,10 +48,13 @@ export function generateEmployeeData(dtoIn) {
     
     const employees = [];
 
+    // ITERACE: smycka pro generovani zamestnancu
     for (let i = 0; i < dtoIn.count; i++) {
+        // SEKVENACE: urceni pohlavi
         const gender = chooseRandom(["male", "female"]);
         
         let name, surname;
+        // SELECTION: vyber jmena a prijmeni dle pohlavi
         if (gender === "male") {
             name = chooseRandom(M_NAMES);
             surname = chooseRandom(M_SURNAMES);
@@ -80,72 +63,71 @@ export function generateEmployeeData(dtoIn) {
             surname = chooseRandom(F_SURNAMES);
         }
         
+        // SEKVENACE: generovani data narozeni a vypocet dekadickeho veku
         const randomTimestamp = randomInt(minTimestamp, maxTimestamp);
         const birthdate = new Date(randomTimestamp).toISOString();
 
-        // Klíčová logika dle úspěšného vzoru: Dekadický věk pro všechny výpočty
+        // LOGIKA: dekadicky vek pro presne vypocty
         const ageDecimal = (currentDate.getTime() - randomTimestamp) / MS_IN_YEAR;
         
+        // SEKVENACE: pridani noveho zamestnance
         employees.push({
             gender,
             birthdate,
             name,
             surname,
             workload: chooseRandom(W_LOADS),
-            ageDecimal, // Interní klíč, který se na konci odstraní
+            ageDecimal, // pomocny klic
         });
     }
 
+    // RETURN: vraci pole zamestnancu
     return employees;
 }
 
 
-/**
- * Spočítá statistiky zaměstnanců s dodržením klíčů a logiky úspěšného testu.
- * @param {object[]} employeeList Pole zaměstnanců.
- * @returns {object} Statistické údaje s plochou strukturou.
- */
+// ALGORITMUS: spocita statisticke udaje
 export function getEmployeeStatistics(employeeList) {
+    // SEKVENACE: Celkovy pocet.
     const total = employeeList.length;
 
-    // Pole s dekadickým věkem (pro průměr, medián, min/max)
+    // SEKVENACE: mapovani hodnot pro vypocty
     const ageValues = employeeList.map(emp => emp.ageDecimal);
-    
-    // Pole s úvazky
     const workloadValues = employeeList.map(emp => emp.workload);
 
-    // 1. Počty úvazků a průměrné hodnoty
+    // SEKVENACE: pocty uvazku (Reduce)
     const workloadsCountMap = workloadValues.reduce((acc, w) => {
         acc[w] = (acc[w] || 0) + 1;
         return acc;
-    }, { 10: 0, 20: 0, 30: 0, 40: 0 }); // Inicializace pro jistotu
+    }, { 10: 0, 20: 0, 30: 0, 40: 0 });
 
+    // SEKVENACE: filtrovani zen a jejich uvazku
     const females = employeeList.filter(e => e.gender === "female");
     const femaleWorkloadValues = females.map(e => e.workload);
     
-    // Výpočet průměru (mean)
+    // POMOCNY ALGORITMUS: funkce pro vypocet prumeru
     const calculateMean = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
     
-    // 2. averageAge (zaokrouhleno na 1 desetinné místo)
+    // SEKVENACE: prumerny vek (zaokrouhleny)
     const averageAge = toPrecision(calculateMean(ageValues), 1);
     
-    // 3./4./5. minAge, maxAge, medianAge - KLÍČOVÁ LOGIKA DLE VZORU: Math.floor(dekadický věk)
+    // SEKVENACE: Min/Max/median vek (Math.floor)
     const minAge = Math.floor(Math.min(...ageValues));
     const maxAge = Math.floor(Math.max(...ageValues));
     const medianAge = Math.floor(calculateMedian(ageValues));
 
-    // 6. medianWorkload (úvazek je celé číslo, ale pro konzistenci zachováme 1 desetinné místo)
+    // SEKVENACE: median uvazku
     const medianWorkload = toPrecision(calculateMedian(workloadValues), 1);
     
-    // 7. averageWomenWorkload (dle vzoru, zaokrouhleno na 1 desetinné místo)
+    // SELECTION: prumerny uvazek zen (kontrola deleni nulou)
     const averageWomenWorkload = femaleWorkloadValues.length > 0 
         ? toPrecision(calculateMean(femaleWorkloadValues), 1) 
         : 0;
 
-    // 8. Seřazený seznam
+    // SEKVENACE: serazeni celeho seznamu podle uvazku
     const sortedByWorkload = [...employeeList].sort((a, b) => a.workload - b.workload);
 
-    // Vrácení ploché struktury pro přesnou shodu s testovacím systémem
+    // RETURN: vraci statistiky v ploche strukture
     return {
         total,
         workload10: workloadsCountMap[10],
@@ -162,33 +144,26 @@ export function getEmployeeStatistics(employeeList) {
     };
 }
 
-/**
- * Spustí generování seznamu zaměstnanců a výpočet statistik.
- * @param {object} dtoIn Vstupní parametry.
- * @returns {object} Statistické údaje zaměstnanců.
- */
+// ALGORITMUS: hlavni ridici funkce
 export function main(dtoIn) {
-    // Generování dat, které obsahuje klíč 'ageDecimal'
+    // ALGORITMUS CALL: generovani dat
     const employeeData = generateEmployeeData(dtoIn);
     
-    // Výpočet statistik, které vrátí klíče jako 'total', 'workload10', atd.
+    // ALGORITMUS CALL: vypocet statistik
     const statistics = getEmployeeStatistics(employeeData);
 
-    // Filtrování pomocného klíče 'ageDecimal' z konečného seznamu
+    // SEKVENACE: odstraneni klice 'ageDecimal' z celeho serazeneho seznamu
     const cleanedSortedList = statistics.sortedByWorkload.map(emp => {
         const { ageDecimal, ...rest } = emp; 
         return rest;
     });
     
-    // Vrácení finálního DTO s opraveným seřazeným seznamem
+    // SEKVENACE: sestaveni finalniho DTO
     const dtoOut = {
         ...statistics,
         sortedByWorkload: cleanedSortedList,
     };
 
-    // Odstranění klíče 'sortedByWorkload' z původního objektu 'statistics' 
-    // před rozbalením do 'dtoOut' by bylo čistější, ale zachováváme kompaktní 
-    // a funkční strukturu pro testy. Klíče jsou již ploché a správně pojmenované.
-
+    // RETURN: vraci finalni DTO
     return dtoOut;
 }
