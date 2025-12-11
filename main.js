@@ -22,15 +22,12 @@ export function generateEmployeeData(dtoIn) {
 
     const WORKLOADS = [10, 20, 30, 40];
 
-    // Pomocná funkce pro náhodný výběr z pole
     const getRandomElement = (arr) => arr[Math.floor(Math.random() * arr.length)];
-    
-    // Náhodné číslo v rozsahu [min, max]
     const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
     const currentDate = new Date();
     
-    // Výpočet hraničních dat
+    // Výpočet hraničních dat pro generování datumu narození
     const maxBirthdate = new Date();
     maxBirthdate.setFullYear(currentDate.getFullYear() - dtoIn.age.min);
     
@@ -59,7 +56,6 @@ export function generateEmployeeData(dtoIn) {
         const randomTimestamp = getRandomInt(minTimestamp, maxTimestamp);
         const birthdate = new Date(randomTimestamp).toISOString();
 
-        // Výpočet věku
         const age = (currentDate.getTime() - randomTimestamp) / MS_PER_YEAR;
 
         const workload = getRandomElement(WORKLOADS);
@@ -97,13 +93,13 @@ function calculateMedian(arr) {
 
 /**
  * Počítá různé statistiky ze seznamu zaměstnanců.
+ * Poznámka: Klíče pro počty úvazků jsou ve formátu 'workloadX', 
+ * což je příprava pro správné mapování v main().
  * @param {Employee[]} employees - Seznam zaměstnanců.
  * @returns {object} - Objekt se statistikami.
  */
 export function getEmployeeStatistics(employees) {
     if (employees.length === 0) {
-        // Zde vracíme strukturu, kterou hlavní funkce očekává, 
-        // ale s prázdnými/nulovými hodnotami
         return {
             employeeCount: 0,
             employeeCountByWorkload: { workload10: 0, workload20: 0, workload30: 0, workload40: 0 },
@@ -121,38 +117,31 @@ export function getEmployeeStatistics(employees) {
     const workloads = employees.map(e => e.workload);
     const women = employees.filter(e => e.gender === "female");
 
-    // 1. Počet zaměstnanců
     const employeeCount = employees.length;
 
-    // 2. Počet zaměstnanců podle výše úvazku - OPRAVENO: Použití klíče 'workloadX'
+    // Počet zaměstnanců podle výše úvazku - klíče ve formátu 'workloadX'
     const employeeCountByWorkload = workloads.reduce((acc, workload) => {
         const key = `workload${workload}`;
         acc[key] = (acc[key] || 0) + 1;
         return acc;
     }, { workload10: 0, workload20: 0, workload30: 0, workload40: 0 });
 
-
-    // 3. Průměrný věk
+    // Průměrný věk (zaokrouhleno na jedno desetinné místo)
     const averageAge = parseFloat((ages.reduce((sum, age) => sum + age, 0) / employeeCount).toFixed(1));
 
-    // 4. Minimální věk
+    // Min/Max věk (zaokrouhleno)
     const minAge = Math.floor(Math.min(...ages)); 
-
-    // 5. Maximální věk
     const maxAge = Math.ceil(Math.max(...ages)); 
 
-    // 6. Medián věku
     const medianAge = calculateMedian(ages);
-
-    // 7. Medián výše úvazku
     const medianWorkload = calculateMedian(workloads);
 
-    // 8. Průměrná výše úvazku v rámci žen
+    // Průměrná výše úvazku v rámci žen
     const averageWorkloadForWomen = women.length > 0 
         ? parseFloat((women.reduce((sum, woman) => sum + woman.workload, 0) / women.length).toFixed(1))
         : 0;
     
-    // 9. Seznam zaměstnanců setříděných dle výše úvazku od nejmenšího po největší
+    // Seznam zaměstnanců setříděných dle výše úvazku od nejmenšího po největší
     const sortedByWorkload = Array.from(employees).sort((a, b) => a.workload - b.workload);
 
     return {
@@ -171,29 +160,33 @@ export function getEmployeeStatistics(employees) {
 
 /**
  * Hlavní funkce, která generuje data a počítá statistiky.
+ * Zajišťuje správnou strukturu výstupního DTO.
  * @param {object} dtoIn - Vstupní DTO (count, age.min, age.max).
  * @returns {object} - Výstupní DTO se statistikami a setříděným seznamem.
  */
 export function main(dtoIn) {
-    // 1. Generování seznamu zaměstnanců
     const employees = generateEmployeeData(dtoIn);
-
-    // 2. Zjištění potřebných hodnot (statistik)
     const statistics = getEmployeeStatistics(employees);
+    
+    // Rozbalení (flattening) počtů úvazků na nejvyšší úroveň
+    const workloadCounts = statistics.employeeCountByWorkload; 
 
-    // 3. Vracení výstupního DTO s požadovanou strukturou.
-    // Přidán klíč 'total', aby prošel test č. 6 (předpoklad: total = employeeCount)
+    // Sestavení finálního DTO přesně podle požadované ukázky
     const dtoOut = {
-        employeeCount: statistics.employeeCount,
-        // Dle požadavku na opravu testu č. 6 a č. 7
+        // Klíč 'total' odpovídá celkovému počtu zaměstnanců
         total: statistics.employeeCount, 
-        employeeCountByWorkload: statistics.employeeCountByWorkload,
+        
+        // Přidání klíčů workload10, workload20, atd. na nejvyšší úroveň
+        ...workloadCounts, 
+        
         averageAge: statistics.averageAge,
         minAge: statistics.minAge,
         maxAge: statistics.maxAge,
         medianAge: statistics.medianAge,
         medianWorkload: statistics.medianWorkload,
-        averageWorkloadForWomen: statistics.averageWorkloadForWomen,
+        // Přejmenování klíče z 'averageWorkloadForWomen' na 'averageWomenWorkload'
+        averageWomenWorkload: statistics.averageWorkloadForWomen, 
+        
         // Odstranění dočasného klíče 'age' z objektů v seznamu
         sortedByWorkload: statistics.sortedByWorkload.map(emp => {
             const { age, ...rest } = emp; 
